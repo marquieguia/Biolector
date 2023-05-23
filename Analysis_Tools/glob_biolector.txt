@@ -1,0 +1,153 @@
+import pandas as pd
+import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+from palette import colors as c
+import curveball
+
+input_fname = 'giacomo_final_may23.xlsx'
+
+
+font1 = {'family': 'sans-serif',
+        'color':  'black',
+        'weight': 'bold',
+        'size': 20,
+        }
+font2 = {'family': 'sans-serif',
+        'weight': 'normal',
+        'size': 18,
+        }
+
+wells_dic = {'KT WT':['A01','A02','A03'],
+             'SW pMAT':['A04','A05','A06'],
+             'KT pMAT':['A07','A08','B01'],
+             'SW WT':['B02','B03','B04'],
+             'sent':['B05','B06','B07', 'B08','C01','C02', 'C03','C04','C05'],
+             '+ve':['C06','C07','C08'],
+             'T1.5': ['D01' ,'D02' ,'D03'] ,
+             'KT col10 Tf': ['D04' ,'D05' ,'D06', 'D07' ,'D08' ,'E01'] ,
+             'KT Tc T1.5':['E02','E03','E04'],
+             'KT col10 Tc':['E05','E06','E07', 'E08','F01','F02'],
+             'SW col10 Tc':['F03','F04','F05','F06','F07','F08'],
+             }
+
+figs_params = {'fig1': {'title': 'P. putida' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+                        'strains_plotted': {'+ve':['black']*8 ,'KT WT': c['orange'], 'KT pMAT': c['red'], 'KT col10 Tf': c['green'], 'T1.5':c['blue'], 'sent':['grey']*8}},
+               'fig2': {'title': 'Transconjugants of P. putida' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+                        'strains_plotted': {'+ve':['black']*8 ,'KT WT': c['orange'], 'KT col10 Tc': c['red'], 'KT Tc T1.5': c['green'],  'sent':['grey']*8}},
+               'fig3': {'title': 'P. fluorescens transconjugant' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+                        'strains_plotted': {'+ve':['black']*8 ,'SW WT': c['blue'], 'SW pMAT': c['cyan'], 'SW col10 Tc': c['green'],  'sent':['grey']*8}},
+               }
+
+# wells_dic = {'PFs_precond':['A01','B01','C01','D01','E01','F01'],
+#              'PPs_precond':['A02','B02','C02','D02','E02','F02'],
+#              'PFs_nocond':['A03','B03','C03','D03','E03','F03'],
+#              'PPs_nocond':['A04','B04','C04','D04','E04','F04'],
+#              'PFs_wt': ['A05' ,'B05' ,'C05' ,'D05' ,'E05' ,'F05'] ,
+#              'PPs_wt': ['A06' ,'B06' ,'C06' ,'D06' ,'E06' ,'F06'] ,
+#              'P20_PCA': ['A07' ,'B07' ,'C07'],
+#              'P20_PCA_TPA': ['A08' ,'B08' ,'C08'],
+#              'P20_1KB': ['D07' ,'E07' ,'F07'] ,
+#              'P20_1KB_TPA': ['D08' ,'E08' ,'F08']
+#              }
+#
+# figs_params = {'fig1': {'title': 'P. putida +- pQ-KAB' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PPs_nocond': c['orange'], 'PPs_wt':c['grey']}},
+#                'fig2': {'title': 'Adapted P. putida +- pQ-KAB' ,'ylims': (0.05 ,1) , 'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PPs_precond': c['red'] ,'PPs_wt': c['grey']}} ,
+#                'fig3': {'title': 'P. fluorescens +- pQ-KAB' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PFs_nocond': c['cyan'], 'PFs_wt':c['grey']}},
+#                'fig4': {'title': 'Adapted P. fluorescens +- pQ-KAB' ,'ylims': (0.05 ,1) , 'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PFs_precond': c['green'] ,'PFs_wt': c['grey']}} ,
+#                }
+
+
+# figs_params = {'fig1': {'title': 'Preconditioning of P. putida pQ-KAB' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PPs_precond': c['red'] ,'PFs_nocond': c['orange']}},
+#                'fig2': {'title': 'Preconditioning of  P. fluorescens pQ-KAB' ,'ylims': (0.05 ,1) , 'xlims': (0 ,100) ,
+#                         'strains_plotted': {'PFs_precond': c['green'] ,'PFs_nocond': c['cyan']}} ,
+#                'fig3': {'title': 'Growth on 10 mM PCA +- 10 mM TPA, P. putida pQ-KAB (P20)' ,'ylims': (0.05 ,1) , 'xlims': (0 ,100) ,
+#                         'strains_plotted': {'P20_PCA': c['grey'] ,'P20_PCA_TPA': c['red']}} ,
+#                'fig4': {'title': 'Growth on 1% KB +- 10 mM TPA, P. putida pQ-KAB (P20)' ,'ylims': (0.05 ,1) ,'xlims': (0 ,100) ,
+#                         'strains_plotted': {'P20_1KB': c['grey'] ,'P20_1KB_TPA': c['orange']}} ,
+#                }
+input_path = os.path.join('..', 'DATA', 'Biolector', input_fname)
+df = pd.read_excel(input_path, sheet_name='raw_data', usecols='A:GN',
+                   header=24, nrows=48)
+df = df.set_index(['Unnamed: 0']).drop(['Unnamed: 1','Unnamed: 2','TIME [h] ->'], axis=1).T
+
+t = np.array(df.index, dtype=np.float64)
+
+print(df)
+
+markers = [".", "v", ">", "8", "s", "p"]
+
+for k, v in figs_params.items():
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    title = v['title']
+
+    strains_and_color = v['strains_plotted']
+
+    for strain, color in strains_and_color.items():
+
+        wells = wells_dic[strain]
+        denom = len(wells)
+        print(denom)
+
+        count = 0
+
+        data = np.array([df[well] for well in wells])
+
+        ovr = 0
+        for well in wells:
+            data = df[well]
+            zeroed = data - min(data)
+            ovr += zeroed
+            label = strain + str(count)
+        ax.scatter(t ,ovr/denom, color=color[count], marker=markers[count], label=label)
+
+        count += 1
+
+
+    plt.title(title ,fontdict=font1)
+    ax.legend(prop=font2)
+    ax.spines[['right' ,'top']].set_visible(False)
+    ax.grid(True ,axis='x')
+    plt.ylabel('OD Gain 20', fontdict=font2)
+    plt.yticks(fontsize=14)
+    plt.xlabel('Time (h)' ,fontdict=font2)
+    plt.xticks(fontsize=14)
+    fig_name = title + '.png'
+    out_path = os.path.join('..', 'Biolector_Figs', fig_name)
+    fig.savefig(out_path)
+    plt.show()
+    plt.close()
+
+
+# # CONTROL DATA
+# input_path = os.path.join('..', 'DATA', 'Biolector', 'Dec22.xlsx')
+# c_df = pd.read_excel(input_path, sheet_name='raw_data', usecols='A:GV',
+#                    header=24, nrows=48)
+# c_df = c_df.set_index(['Unnamed: 0']).drop(['Unnamed: 1','Unnamed: 2','TIME [h] ->'], axis=1).T
+# c_t = np.array(df.index, dtype=np.float64)
+# blank = c_df[['D06', 'E06', 'F06']].mean(axis=1)
+# print(blank)
+
+# # CURVEBALL, it works
+# arr = df['A01'].to_numpy(dtype=np.float64)
+# arr_blank = blank.to_numpy(dtype=np.float64)
+# print(arr_blank)
+# arr -= arr_blank
+# arr = (arr - min(arr)) / max(arr)
+#
+# data = {'Time':t, 'OD':arr}
+# curve_df = pd.DataFrame.from_dict(data)
+# print(curve_df)
+#
+# models ,fig ,ax = curveball.models.fit_model(curve_df,PLOT=True ,PRINT=False)
+#
+# plt.show()
